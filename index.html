@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Task Manager</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        .task-item .form-check-input {
+            margin-right: 15px;
+            transform: scale(1.2); /* Slightly larger checkbox */
+        }
+        .task-item .form-check-label {
+            flex-grow: 1;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .task-item .form-check-input:checked + .form-check-label {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+        .summary-counts {
+            margin-top: 20px;
+            font-size: 1.1em;
+            text-align: right;
+        }
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #6c757d;
+            font-size: 0.9em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4 text-center">Academic Task Manager</h1>
+
+        <div class="summary-counts">
+            Completed: <span id="completed-count" class="fw-bold">0</span> / Total: <span id="total-count" class="fw-bold">0</span>
+        </div>
+
+        <ul id="task-list" class="list-group mt-3">
+            <!-- Tasks will be loaded here by JavaScript -->
+        </ul>
+
+        <footer>
+            <p>&copy; 2023 Academic Task Manager. All rights reserved.</p>
+            <p>Licensed under the <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a>.</p>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS CDN (optional, not strictly needed for this simple UI, but good practice) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial task data, simulating content from a tasks.json file.
+            // This data serves as the default if no tasks are found in localStorage.
+            const initialTasks = [
+                { id: '1', text: 'Review project requirements document', completed: false },
+                { id: '2', text: 'Set up local development environment', completed: true },
+                { id: '3', text: 'Outline report structure for submission', completed: false },
+                { id: '4', text: 'Research relevant academic papers', completed: false },
+                { id: '5', text: 'Draft introduction section', completed: false }
+            ];
+
+            let tasks = []; // This array will hold the current state of tasks
+
+            const taskListElement = document.getElementById('task-list');
+            const completedCountElement = document.getElementById('completed-count');
+            const totalCountElement = document.getElementById('total-count');
+
+            /**
+             * Loads tasks from localStorage or initializes with default data.
+             * If localStorage key 'userTasks' is found, it parses and uses that data.
+             * Otherwise, it uses the predefined 'initialTasks' and saves them to localStorage.
+             */
+            function loadTasks() {
+                const storedTasks = localStorage.getItem('userTasks');
+                if (storedTasks) {
+                    tasks = JSON.parse(storedTasks);
+                } else {
+                    tasks = initialTasks;
+                    saveTasks(); // Persist initial tasks to localStorage for the first run
+                }
+            }
+
+            /**
+             * Saves the current 'tasks' array to localStorage under the key 'userTasks'.
+             * The array is first converted to a JSON string.
+             */
+            function saveTasks() {
+                localStorage.setItem('userTasks', JSON.stringify(tasks));
+            }
+
+            /**
+             * Renders all tasks from the 'tasks' array to the UI.
+             * It clears the current task list and rebuilds it based on the 'tasks' array.
+             * Each task is rendered as a Bootstrap list item with a checkbox and label.
+             */
+            function renderTasks() {
+                taskListElement.innerHTML = ''; // Clear existing tasks before re-rendering
+                tasks.forEach(task => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item task-item'; // Apply Bootstrap list item and custom styles
+
+                    const formCheckDiv = document.createElement('div');
+                    formCheckDiv.className = 'form-check d-flex align-items-center w-100'; // Bootstrap for checkbox alignment
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.id = `task-${task.id}`; // Unique ID for checkbox and label
+                    checkbox.checked = task.completed; // Set checked state based on task data
+                    // Add event listener to toggle task completion on change
+                    checkbox.addEventListener('change', () => toggleTaskCompletion(task.id));
+
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = `task-${task.id}`; // Link label to checkbox
+                    label.textContent = task.text; // Display task text
+
+                    formCheckDiv.appendChild(checkbox);
+                    formCheckDiv.appendChild(label);
+                    listItem.appendChild(formCheckDiv);
+                    taskListElement.appendChild(listItem);
+                });
+                updateCounts(); // Ensure counts are updated after rendering
+            }
+
+            /**
+             * Toggles the completion status of a specific task.
+             * Finds the task by its ID in the 'tasks' array, flips its 'completed' status,
+             * then saves the updated state to localStorage and refreshes the counts.
+             * @param {string} id - The unique ID of the task to toggle.
+             */
+            function toggleTaskCompletion(id) {
+                const taskIndex = tasks.findIndex(task => task.id === id);
+                if (taskIndex > -1) {
+                    tasks[taskIndex].completed = !tasks[taskIndex].completed;
+                    saveTasks(); // Persist the new state
+                    updateCounts(); // Reflect changes in the completion counts
+                }
+            }
+
+            /**
+             * Updates the displayed counts of completed and total tasks in the UI.
+             * Calculates completed tasks by filtering the 'tasks' array.
+             */
+            function updateCounts() {
+                const completedTasksCount = tasks.filter(task => task.completed).length;
+                completedCountElement.textContent = completedTasksCount;
+                totalCountElement.textContent = tasks.length;
+            }
+
+            // --- Application Initialization ---
+            loadTasks();    // Load tasks from storage or use initial data
+            renderTasks();  // Display tasks in the UI
+            // The counts are updated as part of renderTasks and toggleTaskCompletion
+        });
+    </script>
+</body>
+</html>
